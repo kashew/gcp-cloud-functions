@@ -12,8 +12,12 @@ npm i
 ```
 
 ## Local Development
-Local development can be done using the [Functions Framework for Node.js](https://github.com/GoogleCloudPlatform/functions-framework-nodejs)
+Local development can be done by either using the [Functions Framework for Node.js](https://github.com/GoogleCloudPlatform/functions-framework-nodejs) or by running a Docker image that can be generated using [Pack](https://buildpacks.io/docs/tools/pack/)
 
-```
-npx @google-cloud/functions-framework --target=app
+```bash
+# Using Functions Framework
+npm run dev-ff
+
+# Using Pack/Docker
+npm run dev-docker
 ```
