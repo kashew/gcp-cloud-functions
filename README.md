@@ -21,3 +21,9 @@ npm run dev-ff
 # Using Pack/Docker
 npm run dev-docker
 ```
+
+## Run on GCP
+If you want to run the function on GCP, you can use cURL with the following URL:
+```bash
+curl https://us-central1-nth-mantra-320912.cloudfunctions.net/my-function
+```
