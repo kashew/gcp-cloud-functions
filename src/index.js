@@ -1,24 +1,30 @@
-const fastify = require('fastify')
-const app = fastify({ logger: true })
-
 require('dotenv').config()
 
-app.register(require('fastify-postgres'), {
-  connectionString: process.env.DATABASE_URL
+const app = require('fastify')()
+const SyncService = require('./services/sync.service')
+const logger = require('./services/logger.service').createLogger()
+const callCriteriaApi = require('./services/callcriteria.service')
+
+
+app.register(require('fastify-mssql'), {
+  server: process.env.MSSQL_HOST,
+  port: parseInt(process.env.MSSQL_PORT),
+  user: process.env.MSSQL_USERNAME,
+  password: process.env.MSSQL_PASSWORD,
+  database: process.env.MSSQL_DATABASE,
+  options: {
+    trustServerCertificate: true
+  }
 })
 
 app.get('/', async (req, res) => {
-  app.pg.connect(function (err, client, release) {
-    if (err) return res.send(err)
+  const syncService = new SyncService(callCriteriaApi, app.mssql.pool, logger)
 
-    client.query(
-      'SELECT * FROM agent_feed_items LIMIT 10;', [],
-      function onResult(err, result) {
-        release()
-        res.send(err || result)
-      }
-    )
+  syncService.sync().catch(e => {
+    logger.error(e)
   })
+
+  return true
 })
 
 exports.app = async (req, res) => {
@@ -26,6 +32,6 @@ exports.app = async (req, res) => {
     await app.ready()
     app.server.emit('request', req, res)
   } catch (e) {
-    console.log(e)
+    logger.error(e)
   }
 }

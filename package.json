@@ -7,19 +7,22 @@
     "dev-docker": "bin/run-dev.sh",
     "dev-ff": "npx @google-cloud/functions-framework --target=app",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "db:migrate": "node bin/db-migrate.js",
-    "db:seed": "node bin/db-seed.js"
+    "db:create": "node bin/db-create.js",
+    "db:migrate": "node bin/db-migrate.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google-cloud/logging-bunyan": "^3.1.0",
+    "axios": "^0.21.1",
+    "bunyan": "^1.8.15",
     "dotenv": "^10.0.0",
     "fastify": "^3.19.2",
+    "fastify-mssql": "^1.1.1",
     "fastify-postgres": "^3.5.0",
-    "pg": "^8.6.0"
+    "mssql": "^7.2.0"
   },
   "devDependencies": {
-    "@google-cloud/functions-framework": "^1.9.0",
-    "pg-promise": "^10.10.2"
+    "@google-cloud/functions-framework": "^1.9.0"
   }
 }

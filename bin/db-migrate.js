@@ -1,75 +1,89 @@
-const pgp = require('pg-promise')()
-
 require('dotenv').config()
 
-const db = pgp(process.env.DATABASE_URL)
+const sql = require('mssql')
 
-const createTables = async (db) => {
-  const queryCardScope = `
-    CREATE TYPE public.agent_card_scope AS ENUM (
-      'agent',
-      'global'
-    );
-  `
-  const queryCartType = `
-    CREATE TYPE public.agent_card_type AS ENUM (
-      'lead',
-      'policy',
-      'info'
-    );
-  `
+const initMigration = async () => {
+  const dbName = 'ma365db'
+  const schemaName = 'doc'
+  const tableName = 'callCriteriaResponses'
+  const procName = 'insert_call_criteria_response'
+
+  const pool = await sql.connect({
+    server: process.env.MSSQL_HOST,
+    port: parseInt(process.env.MSSQL_PORT),
+    user: process.env.MSSQL_USERNAME,
+    password: process.env.MSSQL_PASSWORD,
+    options: {
+      trustServerCertificate: true
+    }
+  })
+
   const queryCreateTable = `
-    CREATE TABLE IF NOT EXISTS public.agent_feed_items (
-      id bigint NOT NULL,
-      user_uuid uuid,
-      sort_order double precision,
-      occurred_at_key integer,
-      search character varying,
-      payload json,
-      created_at timestamp(6) without time zone NOT NULL,
-      updated_at timestamp(6) without time zone NOT NULL,
-      card_type public.agent_card_type,
-      scope public.agent_card_scope
-    );
+    USE [${dbName}]
+    CREATE TABLE ${schemaName}.${tableName} (
+      row_id bigint identity(1,1) not null
+      ,insertedDateTime datetimeoffset(7) default (getutcdate()) not null
+      ,topic varchar(64) not null
+      ,document nvarchar(max) not null
+      ,transformed nvarchar(max) null
+      ,validated  AS (isjson(document))
+      ,constraint pk_doc_callcriteriaresponses_row_id primary key clustered (row_id)
+    )
   `
 
-  const queryCreateSequence = `
-    CREATE SEQUENCE public.agent_feed_items_id_seq
-      START WITH 1
-      INCREMENT BY 1
-      NO MINVALUE
-      NO MAXVALUE
-      CACHE 1;
+  const queryCreateProc = `
+    CREATE OR ALTER PROC dbo.${procName}(@document nvarchar(max))
+    AS
+    SET NOCOUNT ON;
+    BEGIN TRANSACTION;
+      INSERT INTO ${schemaName}.${tableName} (topic, document)
+      VALUES ('call-criteria-responses', @document);
+    
+    COMMIT TRANSACTION;
+    SET NOCOUNT OFF;
   `
 
-  const queryChangeSeqOwner = `
-    ALTER SEQUENCE public.agent_feed_items_id_seq OWNED BY public.agent_feed_items.id;
+  const queryAddLookupkey = `
+    ALTER TABLE ${schemaName}.${tableName}
+    ADD lookupkey AS (CONVERT(varchar(36), JSON_VALUE(document, '$."SESSION_ID"')))
   `
 
-  const queryAlterColId = `
-    ALTER TABLE ONLY public.agent_feed_items ALTER COLUMN id SET DEFAULT nextval('public.agent_feed_items_id_seq'::regclass);
+  const queryAddReviewDate = `
+    ALTER TABLE ${schemaName}.${tableName}
+    ADD reviewDate AS (convert(DATETIME, json_value(document,'$."review_date"')))
   `
 
-  const queryAddConstraint = `
-    ALTER TABLE ONLY public.agent_feed_items
-      ADD CONSTRAINT agent_feed_items_pkey PRIMARY KEY (id);
-  `
+  const tx = pool.transaction()
 
   try {
-    await db.tx(async t => {
-      await t.none(queryCardScope)
-      await t.none(queryCartType)
-      await t.none(queryCreateTable)
-      await t.none(queryCreateSequence)
-      await t.none(queryChangeSeqOwner)
-      await t.none(queryAlterColId)
-      await t.none(queryAddConstraint)
-    })
+    await tx.begin()
+    const request = tx.request()
+
+    await request.query(queryCreateTable)
+    console.log(`Created Table: ${schemaName}.${tableName}`)
+
+    await request.query(queryCreateProc)
+    console.log(`Created Procedure: dbo.${procName}`)
+
+    await request.query(queryAddLookupkey)
+    console.log(`Added lookupkey to ${schemaName}.${tableName}`)
+
+    await request.query(queryAddReviewDate)
+    console.log(`Added reviewDate to ${schemaName}.${tableName}`)
+
+    await tx.commit()
   } catch (e) {
-    console.log(e)
+    tx.rollback()
+    console.error(e)
   }
+
+  return sql.close()
 }
 
 (async () => {
-  await createTables(db)
+  try {
+    await initMigration()
+  } catch (e) {
+    console.error(e)
+  }
 })()
