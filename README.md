@@ -7,9 +7,25 @@ This learning exercise is based on the following blog post written by Ruan Marti
 
 ## Setup
 
-```
+```bash
+# Install NPM Packages
 npm i
+
+# Create .env from .env.sample
+cp .env.sample .env
+
+# Startup MSSQL Database
+docker-compose up -d
+
+# Create Database
+npm run db:create
+
+# Generate Tables/Procedures
+npm run db:migrate
 ```
+
+## Environment Variables
+If you generate a `.env` file based on the `.env.sample`, you will have the necessary setup to connect to the Docker MSSQL database; however, you will need to supply the correct credentials around calling the Call Criteria API.
 
 ## Local Development
 Local development can be done by either using the [Functions Framework for Node.js](https://github.com/GoogleCloudPlatform/functions-framework-nodejs) or by running a Docker image that can be generated using [Pack](https://buildpacks.io/docs/tools/pack/)
