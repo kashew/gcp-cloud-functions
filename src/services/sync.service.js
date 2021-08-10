@@ -27,8 +27,8 @@ module.exports = class SyncService {
 
         await tx.commit()
       } catch (err) {
-        this.logger.error(err)
         await tx.rollback()
+        this.logger.error(err)
         return err
       }
 

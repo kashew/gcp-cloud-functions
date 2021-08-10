@@ -8,8 +8,11 @@ const loggingBunyan = new LoggingBunyan({
 })
 
 function createLogger() {
-  return require('bunyan').createLogger({
+  const bunyan = require('bunyan')
+
+  return bunyan.createLogger({
     name: 'call-criteria-sync',
+    serializers: bunyan.stdSerializers,
     streams: [
       // Log to the console at 'info' and above
       { stream: process.stdout, level: 'info' },
